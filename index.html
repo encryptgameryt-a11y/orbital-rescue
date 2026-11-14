@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#080a0e">
+<title>ORBITAL RESCUE</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #080a0e;
+  --panel: #11151c;
+  --orange: #ff9d42;
+  --text: #f2f2ed;
+  --muted: #858c98;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+header {
+  height: 70px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #252a33;
+}
+
+.logo {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.logo span { color: var(--orange); }
+
+.badge {
+  color: var(--orange);
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+main {
+  max-width: 1000px;
+  margin: auto;
+  padding: 18px;
+}
+
+.title {
+  font-size: clamp(23px, 5vw, 36px);
+  font-weight: 850;
+  letter-spacing: 1px;
+  margin: 8px 0;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 12px;
+}
+
+.stat {
+  background: var(--panel);
+  border: 1px solid #242a34;
+  border-radius: 9px;
+  padding: 12px;
+}
+
+.stat small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 1.5px;
+}
+
+.stat div {
+  font-size: 20px;
+  font-weight: 750;
+  margin-top: 5px;
+}
+
+.game {
+  position: relative;
+  border: 1px solid #30343d;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #05070b;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: min(58vh, 510px);
+  min-height: 300px;
+  touch-action: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  background: #080a0ecb;
+  text-align: center;
+  padding: 20px;
+}
+
+.overlay h2 {
+  font-size: 25px;
+  letter-spacing: 2px;
+}
+
+.overlay p {
+  color: #a5abb5;
+  max-width: 320px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+button {
+  border: 1px solid #454b56;
+  background: #171c25;
+  color: white;
+  border-radius: 9px;
+  padding: 12px 17px;
+  font-weight: 750;
+  cursor: pointer;
+  touch-action: none;
+}
+
+button:active {
+  background: #343c49;
+  transform: scale(.96);
+}
+
+.primary {
+  background: var(--orange);
+  color: #17100a;
+  border: none;
+  margin-top: 12px;
+  padding: 14px 25px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+}
+
+.control-group {
+  display: flex;
+  gap: 9px;
+}
+
+.control {
+  width: 66px;
+  height: 58px;
+  font-size: 22px;
+}
+
+.thrust {
+  background: #5b351c;
+  border-color: #a9652c;
+  color: #ffbd78;
+  min-width: 100px;
+}
+
+.instructions {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+  padding-top: 5px;
+}
+
+@media (max-width: 480px) {
+  header { height: 58px; }
+  main { padding: 12px; }
+  .controls { gap: 5px; }
+  .control { width: 58px; }
+  .thrust { min-width: 85px; }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">ORBITAL<span> RESCUE</span></div>
+  <div class="badge">MISSION 001</div>
+</header>
+
+<main>
+
+  <div class="title">RENDEZVOUS</div>
+  <div class="subtitle">One spacecraft. One stranded capsule. One chance to bring it home.</div>
+
+  <section class="hud">
+    <div class="stat">
+      <small>RANGE</small>
+      <div id="distance">---</div>
+    </div>
+    <div class="stat">
+      <small>RELATIVE SPEED</small>
+      <div id="speed">---</div>
+    </div>
+    <div class="stat">
+      <small>MISSION TIME</small>
+      <div id="timer">00:00</div>
+    </div>
+  </section>
+
+  <div class="game">
+    <canvas id="space"></canvas>
+
+    <div class="overlay" id="overlay">
+      <div class="badge">DEEP SPACE OPERATIONS</div>
+      <h2 id="overlayTitle">RESCUE MISSION</h2>
+      <p id="overlayText">
+        A stranded capsule is orbiting Earth.
+        Pilot your spacecraft, match its velocity,
+        and complete the rendezvous.
+      </p>
+      <button class="primary" id="start">START MISSION</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <button class="control" id="left">↶</button>
+      <button class="control" id="right">↷</button>
+    </div>
+
+    <button class="control thrust" id="thrust">THRUST</button>
+
+    <button id="reset">RESET</button>
+  </div>
+
+  <div class="instructions">
+    MOBILE: Hold the rotation buttons to steer. Hold THRUST to accelerate.
+    <br>
+    KEYBOARD: ← → to rotate · ↑ to thrust · R to restart.
+    <br>
+    OBJECTIVE: Reach the rescue capsule while matching its velocity.
+  </div>
+
+</main>
+
+<script>
+const canvas = document.getElementById("space");
+const ctx = canvas.getContext("2d");
+
+const $ = id => document.getElementById(id);
+
+let width, height, scale;
+let running = false;
+let won = false;
+let elapsed = 0;
+let lastTime = 0;
+
+const MU = 60000;
+const EARTH_RADIUS = 85;
+const TURN_RATE = 2.5;
+const THRUST_POWER = 15;
+
+let ship, capsule;
+let stars = [];
+
+function resize() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  width = rect.width;
+  height = rect.height;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  scale = Math.min(width, height) / 620;
+
+  stars = Array.from({ length: 100 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    size: Math.random() * 1.5 + .3,
+    alpha: Math.random() * .7 + .2
+  }));
+
+  draw();
+}
+
+function reset() {
+  const r = 220;
+  const angle = Math.PI;
+  const velocity = Math.sqrt(MU / r);
+
+  ship = {
+    x: Math.cos(angle) * r,
+    y: Math.sin(angle) * r,
+    vx: 0,
+    vy: -velocity,
+    angle: -Math.PI / 2
+  };
+
+  capsule = {
+    radius: 220,
+    angle: -Math.PI / 2
+  };
+
+  elapsed = 0;
+  running = false;
+  won = false;
+
+  $("overlay").style.display = "flex";
+  $("overlayTitle").textContent = "RESCUE MISSION";
+  $("overlayText").textContent =
+    "A stranded capsule is orbiting Earth. Pilot your spacecraft, match its velocity, and complete the rendezvous.";
+  $("start").textContent = "START MISSION";
+
+  updateHUD();
+  draw();
+}
+
+function start() {
+  if (won) reset();
+
+  running = true;
+  $("overlay").style.display = "none";
+  lastTime = performance.now();
+  requestAnimationFrame(loop);
+}
+
+const keys = new Set();
+const buttons = { left: false, right: false, thrust: false };
+
+window.addEventListener("keydown", e => {
+  if (["ArrowLeft", "ArrowRight", "ArrowUp", " "].includes(e.key)) {
+    e.preventDefault();
+  }
+
+  keys.add(e.key.toLowerCase());
+
+  if (e.key.toLowerCase() === "r") reset();
+});
+
+window.addEventListener("keyup", e => {
+  keys.delete(e.key.toLowerCase());
+});
+
+function bindHold(id, name) {
+  const el = $(id);
+
+  el.addEventListener("pointerdown", e => {
+    e.preventDefault();
+    buttons[name] = true;
+    el.setPointerCapture(e.pointerId);
+  });
+
+  const release = () => buttons[name] = false;
+
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  el.addEventListener("lostpointercapture", release);
+}
+
+bindHold("left", "left");
+bindHold("right", "right");
+bindHold("thrust", "thrust");
+
+$("start").addEventListener("click", start);
+$("reset").addEventListener("click", reset);
+
+function update(dt) {
+  if (!running) return;
+
+  elapsed += dt;
+
+  const left = buttons.left || keys.has("arrowleft");
+  const right = buttons.right || keys.has("arrowright");
+  const thrust = buttons.thrust || keys.has("arrowup");
+
+  if (left) ship.angle -= TURN_RATE * dt;
+  if (right) ship.angle += TURN_RATE * dt;
+
+  const distanceFromEarth = Math.hypot(ship.x, ship.y);
+
+  if (distanceFromEarth > EARTH_RADIUS) {
+    const gravity = MU / (distanceFromEarth * distanceFromEarth);
+
+    ship.vx -= gravity * ship.x / distanceFromEarth * dt;
+    ship.vy -= gravity * ship.y / distanceFromEarth * dt;
+  }
+
+  if (thrust) {
+    ship.vx += Math.cos(ship.angle) * THRUST_POWER * dt;
+    ship.vy += Math.sin(ship.angle) * THRUST_POWER * dt;
+  }
+
+  ship.x += ship.vx * dt;
+  ship.y += ship.vy * dt;
+
+  capsule.angle += Math.sqrt(MU / capsule.radius) /
+                   capsule.radius * dt;
+
+  if (distanceFromEarth <= EARTH_RADIUS) {
+    running = false;
+    $("overlayTitle").textContent = "MISSION FAILED";
+    $("overlayText").textContent =
+      "Your spacecraft entered Earth's surface. Try again and manage your trajectory.";
+    $("start").textContent = "RETRY MISSION";
+    $("overlay").style.display = "flex";
+  }
+
+  const tx = Math.cos(capsule.angle) * capsule.radius;
+  const ty = Math.sin(capsule.angle) * capsule.radius;
+
+  const distance = Math.hypot(ship.x - tx, ship.y - ty);
+
+  const capsuleSpeed = Math.sqrt(MU / capsule.radius);
+
+  const tvx = -Math.sin(capsule.angle) * capsuleSpeed;
+  const tvy = Math.cos(capsule.angle) * capsuleSpeed;
+
+  const relativeSpeed = Math.hypot(
+    ship.vx - tvx,
+    ship.vy - tvy
+  );
+
+  if (distance < 22 && relativeSpeed < 8) {
+    running = false;
+    won = true;
+
+    $("overlayTitle").textContent = "RENDEZVOUS COMPLETE";
+    $("overlayText").textContent =
+      "You reached the stranded capsule and matched its velocity. Rescue successful!";
+    $("start").textContent = "PLAY AGAIN";
+    $("overlay").style.display = "flex";
+  }
+
+  updateHUD();
+}
+
+function updateHUD() {
+  if (!ship || !capsule) return;
+
+  const tx = Math.cos(capsule.angle) * capsule.radius;
+  const ty = Math.sin(capsule.angle) * capsule.radius;
+
+  $("distance").textContent =
+    Math.round(Math.hypot(ship.x - tx, ship.y - ty));
+
+  const v = Math.hypot(ship.vx, ship.vy);
+  $("speed").textContent = v.toFixed(1);
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = Math.floor(elapsed % 60);
+
+  $("timer").textContent =
+    String(mins).padStart(2, "0") + ":" +
+    String(secs).padStart(2, "0");
+}
+
+function drawShip(x, y, angle) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  ctx.fillStyle = "#f4f0e9";
+  ctx.beginPath();
+  ctx.moveTo(15, 0);
+  ctx.lineTo(-10, -8);
+  ctx.lineTo(-6, 0);
+  ctx.lineTo(-10, 8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#ff9d42";
+  ctx.fillRect(-8, -13, 12, 4);
+  ctx.fillRect(-8, 9, 12, 4);
+
+  ctx.restore();
+}
+
+function draw() {
+  if (!ctx || !width) return;
+
+  ctx.clearRect(0, 0, width, height);
+
+  ctx.fillStyle = "#070a10";
+  ctx.fillRect(0, 0, width, height);
+
+  for (const star of stars) {
+    ctx.globalAlpha = star.alpha;
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = 1;
+
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  ctx.scale(scale, scale);
+
+  // Orbital paths
+  ctx.strokeStyle = "#ffffff20";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 7]);
+
+  for (const r of [220, capsule.radius]) {
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+
+  // Earth
+  const earth = ctx.createRadialGradient(-25, -30, 5, 0, 0, EARTH_RADIUS);
+
+  earth.addColorStop(0, "#8bb6c9");
+  earth.addColorStop(.5, "#326b91");
+  earth.addColorStop(1, "#10283e");
+
+  ctx.fillStyle = earth;
+  ctx.beginPath();
+  ctx.arc(0, 0, EARTH_RADIUS, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Earth atmosphere
+  ctx.strokeStyle = "#63b9ed45";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.arc(0, 0, EARTH_RADIUS + 5, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Capsule
+  const cx = Math.cos(capsule.angle) * capsule.radius;
+  const cy = Math.sin(capsule.angle) * capsule.radius;
+
+  ctx.fillStyle = "#ffad5b";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = "#ffad5b70";
+  ctx.beginPath();
+  ctx.arc(cx, cy, 15, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Spacecraft
+  drawShip(ship.x, ship.y, ship.angle);
+
+  // HUD labels
+  ctx.fillStyle = "#ffffff99";
+  ctx.font = "11px system-ui";
+  ctx.fillText("EARTH", -20, 112);
+  ctx.fillText("RESCUE CAPSULE", cx + 12, cy - 12);
+
+  ctx.restore();
+}
+
+function loop(time) {
+  if (!running) return;
+
+  const dt = Math.min((time - lastTime) / 1000, 0.035);
+  lastTime = time;
+
+  update(dt);
+  draw();
+
+  if (running) requestAnimationFrame(loop);
+}
+
+window.addEventListener("resize", resize);
+
+resize();
+reset();
+</script>
+
+</body>
+        </html>
